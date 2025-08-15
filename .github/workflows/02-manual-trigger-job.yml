@@ -5,15 +5,35 @@ on:
 
 jobs:
   train:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
+    env:
+      RESOURCE_GROUP: MLOps-Training-V2
+      WORKSPACE_NAME: training-v2-workspace
     steps:
     - name: Check out repo
-      uses: actions/checkout@main
+      uses: actions/checkout@v4
     - name: Install az ml extension
       run: az extension add -n ml -y
-    - name: Azure login
-      uses: azure/login@v1
-      with:
-        creds: ${{secrets.AZURE_CREDENTIALS}}
-
-
+    - name: Azure login (device code)
+      run: |
+        echo "Iniciando login interactivo..."
+        az login --use-device-code
+        az account show
+    - name: Pre-flight checks (compute + data asset)
+      run: |
+        az ml compute show \
+          --resource-group "$RESOURCE_GROUP" \
+          --workspace-name "$WORKSPACE_NAME" \
+          --name cpu-training-V2
+        az ml data show \
+          --resource-group "$RESOURCE_GROUP" \
+          --workspace-name "$WORKSPACE_NAME" \
+          --name diabetes-dev-folder \
+          --version 1
+    - name: Trigger Azure ML job
+      run: |
+        az ml job create \
+          --file src/job.yml \
+          --resource-group "$RESOURCE_GROUP" \
+          --workspace-name "$WORKSPACE_NAME"
+  

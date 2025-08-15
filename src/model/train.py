@@ -64,8 +64,8 @@ def train_model(reg_rate, X_train, X_test, y_train, y_test):
         f.write(f"accuracy={acc:.4f}\nauc={auc:.4f}\n")
 
     # Log manual por si quieres además de autolog
-    mlflow.log_metric("accuracy_manual", acc)
-    mlflow.log_metric("auc_manual", auc)
+    # mlflow.log_metric("accuracy_manual", acc)
+    # mlflow.log_metric("auc_manual", auc)
 
 
 def parse_args():
