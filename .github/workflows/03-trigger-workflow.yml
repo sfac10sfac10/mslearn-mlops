@@ -1,0 +1,13 @@
+name: Trigger Workflow after PR creation
+
+on:
+  [pull_request]
+
+jobs:
+  placeholder:
+    name: Placeholder check
+    runs-on: ubuntu-latest
+    steps:
+    - name: Placeholder
+      run: |
+        echo "Will add code checks here in next challenge"
