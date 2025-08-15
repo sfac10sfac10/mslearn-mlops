@@ -66,6 +66,7 @@ def train_model(reg_rate, X_train, X_test, y_train, y_test):
     # Log manual por si quieres además de autolog
     # mlflow.log_metric("accuracy_manual", acc)
     # mlflow.log_metric("auc_manual", auc)
+    # test
 
 
 def parse_args():
