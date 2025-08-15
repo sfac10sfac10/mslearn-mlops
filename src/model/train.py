@@ -7,12 +7,16 @@ import os
 import pandas as pd
 
 from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, roc_auc_score
+
+import mlflow
 
 
 # define functions
 def main(args):
     # TO DO: enable autologging
-
+    mlflow.autolog()
 
     # read data
     df = get_csvs_df(args.training_data)
@@ -34,11 +38,34 @@ def get_csvs_df(path):
 
 
 # TO DO: add function to split data
+def split_data(df):
+    feature_cols = [
+        'Pregnancies','PlasmaGlucose','DiastolicBloodPressure',
+        'TricepsThickness','SerumInsulin','BMI','DiabetesPedigree','Age'
+    ]
+    X = df[feature_cols].values
+    y = df['Diabetic'].values
+    return train_test_split(X, y, test_size=0.30, random_state=0)
 
 
 def train_model(reg_rate, X_train, X_test, y_train, y_test):
-    # train model
-    LogisticRegression(C=1/reg_rate, solver="liblinear").fit(X_train, y_train)
+    model = LogisticRegression(C=1/reg_rate, solver="liblinear")
+    model.fit(X_train, y_train)
+    y_hat = model.predict(X_test)
+    acc = accuracy_score(y_test, y_hat)
+    y_scores = model.predict_proba(X_test)[:, 1]
+    auc = roc_auc_score(y_test, y_scores)
+
+    # Guardar artefactos
+    os.makedirs("outputs", exist_ok=True)
+    import joblib
+    joblib.dump(model, "outputs/model.joblib")
+    with open("outputs/metrics.txt", "w") as f:
+        f.write(f"accuracy={acc:.4f}\nauc={auc:.4f}\n")
+
+    # Log manual por si quieres además de autolog
+    mlflow.log_metric("accuracy_manual", acc)
+    mlflow.log_metric("auc_manual", auc)
 
 
 def parse_args():
