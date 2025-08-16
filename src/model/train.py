@@ -40,8 +40,8 @@ def get_csvs_df(path):
 # TO DO: add function to split data
 def split_data(df):
     feature_cols = [
-        'Pregnancies','PlasmaGlucose','DiastolicBloodPressure',
-        'TricepsThickness','SerumInsulin','BMI','DiabetesPedigree','Age'
+        'Pregnancies', 'PlasmaGlucose', 'DiastolicBloodPressure',
+        'TricepsThickness', 'SerumInsulin', 'BMI', 'DiabetesPedigree', 'Age'
     ]
     X = df[feature_cols].values
     y = df['Diabetic'].values
@@ -83,6 +83,7 @@ def parse_args():
 
     # return args
     return args
+
 
 # run script
 if __name__ == "__main__":
