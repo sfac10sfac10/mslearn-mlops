@@ -1,11 +1,15 @@
-name: Manually trigger an Azure Machine Learning job
+name: Train (dev -> prod) with approvals (self-hosted)
 
 on:
+  push:
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
-  train:
+  experiment:
+    name: Experiment (dev)
     runs-on: self-hosted
+    environment: dev
     env:
       RESOURCE_GROUP: MLOps-Training-V2
       WORKSPACE_NAME: training-v2-workspace
@@ -30,10 +34,51 @@ jobs:
           --workspace-name "$WORKSPACE_NAME" \
           --name diabetes-dev-folder \
           --version 1
-    - name: Trigger Azure ML job
+    - name: Submit dev job (stream until completion)
       run: |
         az ml job create \
           --file src/job.yml \
           --resource-group "$RESOURCE_GROUP" \
-          --workspace-name "$WORKSPACE_NAME"
+          --workspace-name "$WORKSPACE_NAME" \
+          --set inputs.training_data.path=azureml:diabetes-dev-folder:1 \
+          --stream
+  
+  production:
+    name: Production (prod)
+    runs-on: self-hosted
+    needs: experiment
+    if: ${{ success() }}
+    environment: prod
+    env:
+      RESOURCE_GROUP: MLOps-Training-V2
+      WORKSPACE_NAME: training-v2-workspace
+    steps:
+    - name: Check out repo
+      uses: actions/checkout@v4
+    - name: Install az ml extension
+      run: az extension add -n ml -y
+    # - name: Azure login (device code)
+    #   run: |
+    #     echo "Iniciando login interactivo..."
+    #     az login --use-device-code
+    #     az account show
+    - name: Pre-flight checks (compute + data asset)
+      run: |
+        az ml compute show \
+          --resource-group "$RESOURCE_GROUP" \
+          --workspace-name "$WORKSPACE_NAME" \
+          --name cpu-training-V2
+        az ml data show \
+          --resource-group "$RESOURCE_GROUP" \
+          --workspace-name "$WORKSPACE_NAME" \
+          --name diabetes-prod-folder \
+          --version 1
+    - name: Submit prod job (stream until completion)
+      run: |
+        az ml job create \
+          --file src/job.yml \
+          --resource-group "$RESOURCE_GROUP" \
+          --workspace-name "$WORKSPACE_NAME" \
+          --set inputs.training_data.path=azureml:diabetes-prod-folder:1 \
+          --stream
   
