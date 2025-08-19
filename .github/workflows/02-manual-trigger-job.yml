@@ -41,6 +41,7 @@ jobs:
           --resource-group "$RESOURCE_GROUP" \
           --workspace-name "$WORKSPACE_NAME" \
           --set inputs.training_data.path=azureml:diabetes-dev-folder:1 \
+          --set experiment_name=diabetes-dev \
           --stream
   
   production:
@@ -80,5 +81,6 @@ jobs:
           --resource-group "$RESOURCE_GROUP" \
           --workspace-name "$WORKSPACE_NAME" \
           --set inputs.training_data.path=azureml:diabetes-prod-folder:1 \
+          --set experiment_name=diabetes-prod \
           --stream
   
