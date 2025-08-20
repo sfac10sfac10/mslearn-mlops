@@ -1,0 +1,11 @@
+$schema: https://azuremlschemas.azureedge.net/latest/managedOnlineDeployment.schema.json
+name: blue
+endpoint_name: diabetes-endpoint
+model: azureml:diabetes-classifier:1
+# instance_type: Standard_DS1_v2
+# instance_type: Standard_DS2_v2
+# instance_type: Standard_DS3_v2
+# instance_type: Standard_E2s_v3
+instance_type: Standard_F2s_v2
+instance_count: 1
+environment: azureml://registries/azureml/environments/mlflow-model-inference/versions/8
