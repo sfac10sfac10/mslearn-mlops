@@ -1,0 +1,77 @@
+name: Deploy latest trained model to online endpoint
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    env:
+      RESOURCE_GROUP: MLOps-Training-V2
+      WORKSPACE_NAME: training-v2-workspace
+      ENDPOINT_NAME: diabetes-endpoint
+      MODEL_NAME: diabetes-sklearn
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+      # - name: Azure login (device code)
+      #   run: |
+      #     az login --use-device-code
+      #     az account show
+      - name: Install az ml extension
+        run: az extension add -n ml -y || az extension update -n ml
+
+      - name: Ensure endpoint exists (idempotent)
+        run: |
+          az ml online-endpoint show \
+            --name "$ENDPOINT_NAME" -g "$RESOURCE_GROUP" -w "$WORKSPACE_NAME" \
+          || az ml online-endpoint create \
+            --name "$ENDPOINT_NAME" --auth-mode key \
+            -g "$RESOURCE_GROUP" -w "$WORKSPACE_NAME"
+
+      - name: Resolve latest model version
+        id: resolve
+        shell: bash
+        run: |
+          LATEST=$(az ml model list -g "$RESOURCE_GROUP" -w "$WORKSPACE_NAME" -n "$MODEL_NAME" \
+            --query "max_by(@,&to_number(version)).version" -o tsv)
+          if [ -z "$LATEST" ]; then
+            echo "There are no versions for $MODEL_NAME model. Please register the model in the Azure ML Studio and try again." >&2
+            exit 1
+          fi
+          echo "latest=$LATEST" >> $GITHUB_OUTPUT
+          echo "Using $MODEL_NAME:$LATEST"
+
+      - name: Check if deployment exists
+        id: check
+        run: |
+          if az ml online-deployment show -n sklearn-deployment -e diabetes-endpoint \
+            -g "$RESOURCE_GROUP" -w "$WORKSPACE_NAME" > /dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Deploy
+        run: |
+          if [ "${{ steps.check.outputs.exists }}" = "true" ]; then
+            echo "Updating deployment..."
+            az ml online-deployment update \
+              --file aml/deployment_sklearn.yml \
+              --set model=azureml:${{ env.MODEL_NAME }}:${{ steps.resolve.outputs.latest }} \
+              -g "$RESOURCE_GROUP" -w "$WORKSPACE_NAME"
+          else
+            echo "Creating deployment..."
+            az ml online-deployment create \
+              --file aml/deployment_sklearn.yml \
+              --set model=azureml:${{ env.MODEL_NAME }}:${{ steps.resolve.outputs.latest }} \
+              -g "$RESOURCE_GROUP" -w "$WORKSPACE_NAME" \
+              --all-traffic
+          fi
+
+      - name: Smoke test
+        run: |
+          az ml online-endpoint invoke \
+            --name "$ENDPOINT_NAME" \
+            --request-file aml/inference/sample.json \
+            -g "$RESOURCE_GROUP" -w "$WORKSPACE_NAME"
