@@ -11,21 +11,31 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, roc_auc_score
 
 import mlflow
+import mlflow.sklearn
 
 
 # define functions
 def main(args):
     # TO DO: enable autologging
-    mlflow.autolog()
+    mlflow.autolog(log_models=False)
 
-    # read data
-    df = get_csvs_df(args.training_data)
+    with mlflow.start_run():
+        # read data
+        df = get_csvs_df(args.training_data)
 
-    # split data
-    X_train, X_test, y_train, y_test = split_data(df)
+        # split data
+        X_train, X_test, y_train, y_test = split_data(df)
 
-    # train model
-    train_model(args.reg_rate, X_train, X_test, y_train, y_test)
+        # train model
+        model = train_model(args.reg_rate, X_train, X_test, y_train, y_test)
+
+        # Log the model **with conda.yaml**
+        conda_env = mlflow.sklearn.get_default_conda_env()
+        mlflow.sklearn.log_model(
+            sk_model=model,
+            artifact_path="model",
+            conda_env=conda_env
+        )
 
 
 def get_csvs_df(path):
@@ -66,6 +76,8 @@ def train_model(reg_rate, X_train, X_test, y_train, y_test):
     # Log manual por si quieres además de autolog
     # mlflow.log_metric("accuracy_manual", acc)
     # mlflow.log_metric("auc_manual", auc)
+
+    return model
 
 
 def parse_args():
